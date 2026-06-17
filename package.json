@@ -1,16 +1,69 @@
 {
   "name": "apxc-js-ide",
   "version": "1.0.0",
-  "description": "",
+  "description": "A desktop JavaScript/Node.js playground inspired by TypeScript Playground",
   "main": "main.js",
+  "author": "APXC",
+  "license": "ISC",
   "scripts": {
     "start": "npm run build && electron .",
     "build": "webpack",
+    "dist": "npm run build && electron-builder --win --linux",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "build": {
+    "appId": "com.apxc.js-ide",
+    "productName": "APXC JS IDE",
+    "copyright": "Copyright © 2024 APXC",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/preload.js",
+      "main.js",
+      "package.json"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Development"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
   "dependencies": {
     "electron": "^28.0.0",
     "monaco-editor": "^0.55.1"
@@ -18,6 +71,7 @@
   "devDependencies": {
     "copy-webpack-plugin": "^14.0.0",
     "css-loader": "^7.1.4",
+    "electron-builder": "^26.15.3",
     "html-webpack-plugin": "^5.6.7",
     "monaco-editor-webpack-plugin": "^7.1.1",
     "style-loader": "^4.0.0",

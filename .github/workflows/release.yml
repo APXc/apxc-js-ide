@@ -1,0 +1,131 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   # Si attiva su tag tipo: v1.0.0, v1.2.3
+
+permissions:
+  contents: write  # Necessario per creare la Release su GitHub
+
+jobs:
+  # ── Build Windows (.exe) ───────────────────────────────────────────────────
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build & Package (Windows)
+        run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: release/*.exe
+          retention-days: 1
+
+  # ── Build Linux (.AppImage + .deb) ────────────────────────────────────────
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libnotify-dev \
+            libnss3 \
+            libxss1 \
+            libxtst6 \
+            xauth \
+            xvfb \
+            libgbm-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build & Package (Linux)
+        run: npm run dist:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: |
+            release/*.AppImage
+            release/*.deb
+          retention-days: 1
+
+  # ── Publish GitHub Release ────────────────────────────────────────────────
+  publish-release:
+    name: Publish Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: artifacts/windows
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-linux
+          path: artifacts/linux
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "APXC JS IDE ${{ github.ref_name }}"
+          body: |
+            ## APXC JS IDE ${{ github.ref_name }}
+
+            ### Download
+            | Platform | File | Description |
+            |----------|------|-------------|
+            | Windows | `APXC-JS-IDE-Setup-*.exe` | Installer NSIS (x64) |
+            | Linux | `APXC-JS-IDE-*.AppImage` | AppImage portable (x64) |
+            | Linux | `apxc-js-ide_*.deb` | Pacchetto Debian/Ubuntu (x64) |
+
+            ### Installazione
+            **Windows**: Scarica ed esegui il file `.exe`. L'installer guida passo passo.
+            **Linux (AppImage)**: Rendi eseguibile con `chmod +x *.AppImage` e avvia direttamente.
+            **Linux (deb)**: Installa con `sudo dpkg -i *.deb`.
+
+            ---
+            *Made by AI — GitHub Copilot (Claude Sonnet)*
+          files: |
+            artifacts/windows/*.exe
+            artifacts/linux/*.AppImage
+            artifacts/linux/*.deb
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
