@@ -1,9 +1,12 @@
 {
   "name": "apxc-js-ide",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A desktop JavaScript/Node.js playground inspired by TypeScript Playground",
   "main": "main.js",
-  "author": "APXC",
+  "author": {
+    "name": "APXC",
+    "email": "info@alessiopellizzaro.it"
+  },
   "license": "ISC",
   "scripts": {
     "start": "npm run build && electron .",
