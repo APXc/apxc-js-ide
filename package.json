@@ -1,6 +1,6 @@
 {
   "name": "apxc-js-ide",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A desktop JavaScript/Node.js playground inspired by TypeScript Playground",
   "main": "main.js",
   "author": "APXC",
