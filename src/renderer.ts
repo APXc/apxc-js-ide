@@ -10,7 +10,8 @@ interface Tab {
 
 let tabs: Tab[] = [];
 let activeTabId: string = '';
-let editors: Map<string, any> = new Map(); // monaco editor instances per tab
+let editors: Map<string, any> = new Map();       // monaco editor instances per tab
+let editorWrappers: Map<string, HTMLElement> = new Map(); // div wrapper per tab
 
 // ── Utilità ──────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,8 @@ function closeTab(id: string) {
   const idx = tabs.findIndex(t => t.id === id);
   editors.get(id)?.dispose();
   editors.delete(id);
+  editorWrappers.get(id)?.remove();
+  editorWrappers.delete(id);
   tabs.splice(idx, 1);
   if (activeTabId === id) {
     activeTabId = tabs[Math.max(0, idx - 1)].id;
@@ -127,21 +130,20 @@ function switchTab(id: string) {
 
 function activateTab(id: string) {
   const editorContainer = document.getElementById('editor-container')!;
-  const outputDiv = document.getElementById('output')!;
   const tab = tabs.find(t => t.id === id);
   if (!tab) return;
 
-  // Mostra/nascondi editor instances
-  editors.forEach((ed, tabId) => {
-    const domNode = ed.getDomNode();
-    if (domNode) domNode.style.display = tabId === id ? 'block' : 'none';
+  // Mostra/nascondi i wrapper div (non il DOM interno di Monaco)
+  editorWrappers.forEach((wrapper, tabId) => {
+    wrapper.style.display = tabId === id ? 'block' : 'none';
   });
 
   if (!editors.has(id)) {
-    // Crea nuovo container per questo editor
+    // Crea nuovo wrapper div per questo editor
     const edDiv = document.createElement('div');
-    edDiv.style.cssText = 'width:100%;height:100%;';
+    edDiv.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;';
     editorContainer.appendChild(edDiv);
+    editorWrappers.set(id, edDiv);
 
     const editor = monaco.editor.create(edDiv, {
       value: tab.code,
@@ -166,8 +168,8 @@ function activateTab(id: string) {
 
     editors.set(id, editor);
   } else {
-    const domNode = editors.get(id)!.getDomNode();
-    if (domNode) domNode.style.display = 'block';
+    // Il wrapper è già stato mostrato sopra, basta fare layout
+    editors.get(id)?.layout();
   }
 
   // Mostra output del tab attivo
@@ -222,6 +224,90 @@ function initResizer() {
   });
 }
 
+// ── Packages Panel ────────────────────────────────────────────────────────────
+
+async function loadPackageList() {
+  const api = (window as any).electronAPI;
+  const deps: Record<string, string> = await api.listPackages();
+  const list = document.getElementById('pkg-list')!;
+  list.innerHTML = '';
+  const names = Object.keys(deps);
+  if (names.length === 0) {
+    list.innerHTML = '<div id="pkg-empty">Nessun pacchetto installato.</div>';
+    return;
+  }
+  names.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'pkg-item';
+    item.innerHTML = `
+      <span><span class="pkg-name">${name}</span><span class="pkg-version">${deps[name]}</span></span>
+      <span class="pkg-remove" data-pkg="${name}" title="Rimuovi">×</span>
+    `;
+    item.querySelector('.pkg-remove')!.addEventListener('click', async () => {
+      const statusEl = document.getElementById('pkg-status')!;
+      statusEl.textContent = `Rimozione ${name}...`;
+      statusEl.className = 'loading';
+      await api.uninstallPackage(name);
+      statusEl.textContent = `${name} rimosso.`;
+      statusEl.className = 'success';
+      await loadPackageList();
+    });
+    list.appendChild(item);
+  });
+}
+
+function initPackagesPanel(api: any) {
+  const packagesBtn = document.getElementById('packages-btn')!;
+  const drawer = document.getElementById('packages-drawer')!;
+  const pkgInput = document.getElementById('pkg-input') as HTMLInputElement;
+  const installBtn = document.getElementById('pkg-install-btn') as HTMLButtonElement;
+  const statusEl = document.getElementById('pkg-status')!;
+
+  // Toggle drawer
+  packagesBtn.addEventListener('click', () => {
+    const isOpen = drawer.classList.toggle('open');
+    packagesBtn.classList.toggle('active', isOpen);
+    if (isOpen) {
+      loadPackageList();
+      pkgInput.focus();
+    }
+  });
+
+  // Chiudi drawer cliccando fuori
+  document.addEventListener('click', (e) => {
+    if (!drawer.contains(e.target as Node) && e.target !== packagesBtn) {
+      drawer.classList.remove('open');
+      packagesBtn.classList.remove('active');
+    }
+  });
+
+  // Install
+  const doInstall = async () => {
+    const name = pkgInput.value.trim();
+    if (!name) return;
+    installBtn.disabled = true;
+    statusEl.textContent = `⏳ Installazione di ${name}...`;
+    statusEl.className = 'loading';
+    const result: { success: boolean; error?: string } = await api.installPackage(name);
+    if (result.success) {
+      statusEl.textContent = `✓ ${name} installato con successo.`;
+      statusEl.className = 'success';
+      pkgInput.value = '';
+      await loadPackageList();
+    } else {
+      statusEl.textContent = `✗ ${result.error ?? 'Errore durante l\'installazione.'}`;
+      statusEl.className = 'error';
+    }
+    installBtn.disabled = false;
+    pkgInput.focus();
+  };
+
+  installBtn.addEventListener('click', doInstall);
+  pkgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doInstall();
+  });
+}
+
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 async function initializeEditor() {
@@ -240,6 +326,7 @@ async function initializeEditor() {
   renderTabBar();
   activateTab(activeTabId);
   initResizer();
+  initPackagesPanel(api);
 
   // Pulsante + nuovo tab
   document.getElementById('add-tab-btn')!.addEventListener('click', () => {
