@@ -30,7 +30,7 @@ Run code snippets instantly, manage npm packages, and organize your experiments 
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/apxc-js-ide.git
+git clone https://github.com/apxc/apxc-js-ide.git
 cd apxc-js-ide
 
 # Install dependencies
