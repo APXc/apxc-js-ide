@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8">
+    <title>APXC JS IDE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+
+      body, html {
+        margin: 0; padding: 0;
+        height: 100%; overflow: hidden;
+        font-family: 'Inter', sans-serif;
+        background: #1e1e1e;
+        color: #d4d4d4;
+      }
+
+      /* ── TOP BAR ── */
+      #topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 44px;
+        background: #252526;
+        border-bottom: 1px solid #3c3c3c;
+        padding: 0 12px;
+        flex-shrink: 0;
+      }
+      #app-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #cccccc;
+        letter-spacing: 0.5px;
+        user-select: none;
+      }
+      #topbar-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 14px;
+        border: none;
+        border-radius: 4px;
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .btn-run {
+        background: #0e7a0d;
+        color: #fff;
+      }
+      .btn-run:hover { background: #13a312; }
+      .btn-export {
+        background: #3c3c3c;
+        color: #cccccc;
+      }
+      .btn-export:hover { background: #505050; }
+
+      /* ── TAB BAR ── */
+      #tab-bar {
+        display: flex;
+        align-items: center;
+        background: #252526;
+        border-bottom: 1px solid #3c3c3c;
+        height: 36px;
+        overflow-x: auto;
+        flex-shrink: 0;
+      }
+      #tab-bar::-webkit-scrollbar { height: 3px; }
+      #tab-bar::-webkit-scrollbar-thumb { background: #555; }
+
+      .tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 14px;
+        height: 36px;
+        font-size: 12px;
+        color: #969696;
+        cursor: pointer;
+        white-space: nowrap;
+        border-right: 1px solid #3c3c3c;
+        user-select: none;
+        transition: background 0.1s, color 0.1s;
+        min-width: 80px;
+      }
+      .tab:hover { background: #2a2d2e; color: #cccccc; }
+      .tab.active {
+        background: #1e1e1e;
+        color: #ffffff;
+        border-top: 2px solid #007acc;
+      }
+      .tab-name {
+        outline: none;
+        background: transparent;
+        border: none;
+        color: inherit;
+        font-family: inherit;
+        font-size: inherit;
+        max-width: 120px;
+        cursor: pointer;
+      }
+      .tab-name:focus {
+        border-bottom: 1px solid #007acc;
+        cursor: text;
+      }
+      .tab-close {
+        font-size: 14px;
+        line-height: 1;
+        color: #666;
+        padding: 0 2px;
+        border-radius: 3px;
+      }
+      .tab-close:hover { color: #cccccc; background: #555; }
+      #add-tab-btn {
+        padding: 0 12px;
+        height: 36px;
+        font-size: 18px;
+        color: #666;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      #add-tab-btn:hover { color: #cccccc; }
+
+      /* ── MAIN LAYOUT ── */
+      #workspace {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 80px);
+      }
+      #main-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* ── EDITOR ── */
+      #editor-container {
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* ── RESIZER ── */
+      #resizer {
+        width: 5px;
+        background: #3c3c3c;
+        cursor: col-resize;
+        flex-shrink: 0;
+        transition: background 0.15s;
+      }
+      #resizer:hover, #resizer.dragging { background: #007acc; }
+
+      /* ── OUTPUT PANEL ── */
+      #output-container {
+        width: 420px;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+        background: #1e1e1e;
+      }
+      #output-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 12px;
+        background: #252526;
+        border-bottom: 1px solid #3c3c3c;
+        font-size: 11px;
+        color: #858585;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        flex-shrink: 0;
+      }
+      #clear-btn {
+        background: none;
+        border: none;
+        color: #858585;
+        font-size: 11px;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Inter', sans-serif;
+      }
+      #clear-btn:hover { color: #cccccc; background: #3c3c3c; }
+      #output {
+        flex: 1;
+        padding: 12px 16px;
+        font-family: 'Roboto Mono', 'Consolas', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        color: #d4d4d4;
+        word-break: break-word;
+      }
+      #output::-webkit-scrollbar { width: 8px; }
+      #output::-webkit-scrollbar-track { background: #1e1e1e; }
+      #output::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
+      .output-line { display: block; }
+      .output-line.error { color: #f48771; }
+      .output-line.success { color: #89d185; }
+      .output-line.info { color: #9cdcfe; }
+      .output-placeholder { color: #555; font-style: italic; }
+    </style>
+  </head>
+  <body>
+    <!-- TOP BAR -->
+    <div id="topbar">
+      <span id="app-title">⚡ APXC JS IDE</span>
+      <div id="topbar-actions">
+        <button class="btn btn-export" id="export-btn">⬇ Export</button>
+        <button class="btn btn-run" id="run-button">▶ Run</button>
+      </div>
+    </div>
+
+    <!-- TAB BAR -->
+    <div id="tab-bar">
+      <div id="add-tab-btn" title="Nuovo tab">+</div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div id="workspace">
+      <div id="main-container">
+        <div id="editor-container"></div>
+        <div id="resizer"></div>
+        <div id="output-container">
+          <div id="output-header">
+            <span>Console Output</span>
+            <button id="clear-btn">Clear</button>
+          </div>
+          <div id="output"><span class="output-placeholder">Premi ▶ Run per eseguire il codice...</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carica Monaco Editor tramite AMD loader nativo, senza Webpack -->
+    <script>var require = { paths: { 'vs': 'vs' } };</script>
+    <script src="vs/loader.js"></script>
+    <script>
+      require(['vs/editor/editor.main'], function() {
+        window.monacoReady = true;
+        window.dispatchEvent(new Event('monacoReady'));
+      });
+    </script>
+  </body>
+</html>
+    </div>
+  </body>
+</html>
